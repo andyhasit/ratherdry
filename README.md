@@ -18,7 +18,7 @@ Your app deals with **cats**, **dogs** and **owners**, where dogs only have one 
 Just define your collections and relationships like so:
 
 ```javascript
-import {Database} from 'superdry';
+import {Database} from 'ratherdry';
 
 var db = new Database('your-db-name', function(schema) {  
   schema.addStore('owner')
@@ -84,7 +84,7 @@ Good to know:
 IndexedDB has a built in versioning and upgrade system, although it is a bit clunky to use. Superdry makes this easy and hides the details, all you need to do is pass a schema object instead of a function to the Database constructor:
 
 ```javascript
-import {Database, schema} from 'superdry';
+import {Database, schema} from 'ratherdry';
 
 var schema = new Schema();
 
@@ -105,4 +105,4 @@ var db = new Database('your-db-name', schema)
 
 ### Caching
 
-At present only records are cached, meaning once a specific record has been fetched from the database, superdry will returned the cached version.
+At present only records are cached, meaning once a specific record has been fetched from the database, ratherdry will returned the cached version.
