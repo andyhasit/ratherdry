@@ -106,3 +106,5 @@ var db = new Database('your-db-name', schema)
 ### Caching
 
 At present only records are cached, meaning once a specific record has been fetched from the database, ratherdry will returned the cached version.
+
+The plan is to ensure all queries return cached records.
