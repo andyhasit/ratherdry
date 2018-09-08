@@ -1,10 +1,10 @@
-# Superdry
+# Ratherdry
 
 *Dynamically named functions for IndexedDB*
 
 ### What is it?
 
-Superdry is a tiny stand-alone library for working with IndexedDB which:
+Ratherdry is a tiny stand-alone library for working with IndexedDB which:
 
 1. Lets you clearly define collections and relationships
 2. Generates ***functions named after your collections and relationships***
@@ -29,7 +29,7 @@ var db = new Database('your-db-name', function(schema) {
 })
 ```
 
-Superdry will then:
+Ratherdry will then:
 
 1. Create the required stores and indices in your database if required (see IndexedDB versioning below)
 2. Strap functions onto the **db** object to help you work with your collections
@@ -81,7 +81,7 @@ Good to know:
 
 ### IndexedDB versioning
 
-IndexedDB has a built in versioning and upgrade system, although it is a bit clunky to use. Superdry makes this easy and hides the details, all you need to do is pass a schema object instead of a function to the Database constructor:
+IndexedDB has a built in versioning and upgrade system, although it is a bit clunky to use. Ratherdry makes this easy and hides the details, all you need to do is pass a schema object instead of a function to the Database constructor:
 
 ```javascript
 import {Database, schema} from 'ratherdry';
