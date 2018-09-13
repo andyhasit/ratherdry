@@ -4,7 +4,7 @@
   "description": "Dynamically named functions for IndexedDB",
   "main": "ratherdry.js",
   "scripts": {
-    "test": "jest"
+    "test": "gulp && jest"
   },
   "repository": {
     "type": "git",

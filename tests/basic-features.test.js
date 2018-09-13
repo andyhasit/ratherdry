@@ -1,5 +1,11 @@
+/*
+  The first test found in this file must call db.ready() and wait for it to resolve.
+  Subsequent tests can now skip that and go straight to calling functions on db.
+*/
+
 import {Database, Schema} from '../dist/ratherdry.js'
 global.indexedDB = require("fake-indexeddb");
+global.IDBKeyRange = require("fake-indexeddb/lib/FDBKeyRange");
 
 const c = console;
 const schema = new Schema();
@@ -10,25 +16,15 @@ schema.addVersion((schema, isUpgrade) => {
   let tags = schema.addStore('tag')
   schema.oneToMany('day', 'task')
   schema.manyToMany('tag', 'task')
-  if (isUpgrade) {
-    tags.put({label: 'urgent'})
-  }
 })
 
 const db = new Database('testdb', schema)
 
-
-it('Silly test just to initialise db.ready()', () => { expect.assertions(1)
-  /*
-  The first test found in this file must call db.ready() and wait for it to resolve.
-  Subsequent tests can now skip that and go straight to calling functions on db.
-  */
-  expect.assertions(1)
+beforeEach(() => {
   return db.ready().then(() => {
-    return expect(1).toEqual(1)
+    return db.clear().then(() => db.dump())
   })
-})
-
+});
 
 it('All expected functions are defined', () => {
 
@@ -57,12 +53,95 @@ it('All expected functions are defined', () => {
   expect(db.linkTasktoTag).toBeDefined()
   expect(db.unlinkTagFromTask).toBeDefined()
   expect(db.unlinkTaskFromTag).toBeDefined()
-
 })
 
-
-it('getAll works as expected', () => { expect.assertions(1)
-  return db.getAllTags().then(tags => {
-    return expect(tags.length).toEqual(1)
+it('clear works as expected', () => {
+  expect.assertions(1)
+  return db.ready().then(() => {
+    return db.clear().then(() => db.dump().then(data => 
+      expect(data).toEqual({ day: [], m2m__tag__task: [], tag: [], task: [] })
+    ))
   })
 })
+
+it('put works as expected', () => { 
+  expect.assertions(2)
+  return db.putTask({text: 'build tests'}).then(task => {
+    expect(task.id).toEqual(1)
+    expect(task.text).toEqual('build tests')
+  })
+})
+
+it('get works as expected', () => { 
+  expect.assertions(1)
+  return db.putTask({text: 'build tests'}).then(task => {
+    return db.getTask(task.id).then(task => {
+      expect(task.text).toEqual('build tests')
+    })
+  })
+})
+
+it('getAll works as expected', () => { 
+  expect.assertions(2)
+  return db.putTask({text: 'build tests'}).then(task => {
+    return db.getAllTasks().then(tasks => {
+      expect(tasks.length).toEqual(1)
+      expect(tasks[0].text).toEqual('build tests')
+    })
+  })
+})
+
+it('del works as expected', () => { 
+  expect.assertions(1)
+  return db.putTask({text: 'build tests'}).then(task => {
+    return db.delTask(task).then(task => {
+      return db.getAllTasks().then(tasks => {
+        expect(tasks.length).toEqual(0)
+      })
+    })
+  })
+})
+
+it('getParent works as expected', () => { 
+  expect.assertions(1)
+  return db.putTask({text: 'build tests'}).then(task => {
+    return db.putDay({day: 'monday'}).then(day => {
+      return db.setTaskDay(task, day).then(() => {
+        return db.getTaskDay(task).then(taskDay => {
+          expect(taskDay).toEqual(day)
+        })
+      })
+    })
+  })
+})
+
+it('getChildren works as expected', () => { 
+  expect.assertions(1)
+  return db.putTask({text: 'misc'}).then(miscTask => {
+    return db.putTask({text: 'build tests'}).then(task => {
+      return db.putDay({day: 'monday'}).then(day => {
+        return db.setTaskDay(task, day).then(() => {
+          return db.getDayTasks(day).then(tasks => {
+            expect(tasks).toEqual([task])
+          })
+        })
+      })
+    })
+  })
+})
+
+
+/*
+filter with function works as expected
+getParent works as expected
+setParent works as expected
+getManyToMany works as expected
+linkManyToMany works as expected
+unlink left from right works as expected
+unlink right from left works as expected
+clear works as expected
+
+test schema versions and migrations work
+
+
+*/

@@ -1,4 +1,32 @@
 
+/*
+If you need to access all the entries with a given name you can use a cursor. You can open two different types of cursors on indexes. A normal cursor maps the index property to the object in the object store. A key cursor maps the index property to the key used to store the object in the object store. The differences are illustrated here:
+
+
+
+/ Using a normal cursor to grab whole customer record objects
+index.openCursor().onsuccess = function(event) {
+  var cursor = event.target.result;
+  if (cursor) {
+    // cursor.key is a name, like "Bill", and cursor.value is the whole object.
+    alert("Name: " + cursor.key + ", SSN: " + cursor.value.ssn + ", email: " + cursor.value.email);
+    cursor.continue();
+  }
+};
+
+// Using a key cursor to grab customer record object keys
+index.openKeyCursor().onsuccess = function(event) {
+  var cursor = event.target.result;
+  if (cursor) {
+    // cursor.key is a name, like "Bill", and cursor.value is the SSN.
+    // No way to directly get the rest of the stored object.
+    alert("Name: " + cursor.key + ", SSN: " + cursor.primaryKey);
+    cursor.continue();
+  }
+};
+
+*/
+
 export class Database {
   constructor(dbName, schemaArg) {
     if (schemaArg instanceof Schema) {
@@ -12,7 +40,10 @@ export class Database {
     this._fullyLoaded = {}
     this._dbp = new Promise((resolve, reject) => {
       let openreq = indexedDB.open(dbName, this.schema.getVersion())
-      openreq.onerror = () => reject(openreq.error)
+      openreq.onerror = () => {
+        console.log(openreq.error)
+        reject(openreq.error)
+      }
       openreq.onsuccess = () => {
         this.schema.createFunctions(this)
         resolve(openreq.result)
@@ -26,11 +57,24 @@ export class Database {
   ready() {
     return this._dbp
   }
-  dump() {
-    let data = {}, promises=[];
+  clear() {
+    let promises = [];
     return this._dbp.then(db => {
       let names = db.objectStoreNames, len = db.objectStoreNames.length;
-      for (let i=0;i<len;i++) {
+      for (let i=0; i<len; i++) {
+        let store = names[i];
+        promises.push(this._wrap(store, 'clear', 'readwrite').then(() => {
+          return this._caches[store] = {}
+        }))
+      }
+      return Promise.all(promises)
+    });
+  }
+  dump() {
+    let data = {}, promises = [];
+    return this._dbp.then(db => {
+      let names = db.objectStoreNames, len = db.objectStoreNames.length;
+      for (let i=0; i<len; i++) {
         let store = names[i];
         promises.push(this.getAll(store).then(rows => data[store] = rows))
       }
@@ -61,6 +105,7 @@ export class Database {
   del(store, record) {
     return this._wrap(store, 'delete', 'readwrite', record.id).then(id => {
       delete this._cacheOf(store)[record.id]
+      return true
     })
   }
   get(store, id) {
@@ -125,7 +170,7 @@ export class Database {
     return this._dbp.then(db => new Promise((resolve, reject) => {
       let records = []
       let cursorTrans = db.transaction(store).objectStore(store).openCursor()
-      cursorTrans.onerror = error => c.log(error)
+      cursorTrans.onerror = error => reject(cursorTrans.error)
       cursorTrans.onsuccess = event => {
         var cursor = event.target.result
         if (cursor) {
@@ -153,12 +198,22 @@ export class Database {
 
   }
   getChildren(parentStore, childStore, parentRecord) {
-    //Todo : cache
     return this._dbp.then(db => new Promise((resolve, reject) => {
+      let records = []
       let transaction = db.transaction(childStore)
-      let request = transaction.objectStore(childStore).index(parentStore).get(parentRecord.id)
-      transaction.oncomplete = () => resolve(request.result) // TODO: expand to use cache
-      transaction.onabort = transaction.onerror = () => reject(transaction.error)
+      let index = transaction.objectStore(childStore).index(parentStore)
+      let range = IDBKeyRange.only(parentRecord.id)
+      index.openCursor(range).onsuccess = event => {
+        let cursor = event.target.result
+        if (cursor) {
+          let record = cursor.value
+          records.push(record)
+          cursor.continue();
+        }
+        else {
+          resolve(records)
+        }
+      }
     }))
   }
   setParent(childStore, parentStore, childRecord, parentRecord) {
