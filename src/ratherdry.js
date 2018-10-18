@@ -27,6 +27,8 @@ index.openKeyCursor().onsuccess = function(event) {
 
 */
 
+const c = console;
+
 export class Database {
   constructor(dbName, schemaArg) {
     if (schemaArg instanceof Schema) {
@@ -194,10 +196,29 @@ export class Database {
     }
     return this.get(parentStore, parentId)
   }
-  getLinked(storeName, store1, store2Record) {
-
+  _filterOnIndex(storeName, indexName, value) {
+    return this._dbp.then(db => new Promise((resolve, reject) => {
+      let records = []
+      let transaction = db.transaction(storeName)
+      console.log(indexName)
+      let index = transaction.objectStore(storeName).index(indexName)
+      let range = IDBKeyRange.only(value)
+      index.openCursor(range).onsuccess = event => {
+        let cursor = event.target.result
+        if (cursor) {
+          let record = cursor.value
+          records.push(record)
+          cursor.continue()
+        }
+        else {
+          resolve(records)
+        }
+      }
+    }))
   }
   getChildren(parentStore, childStore, parentRecord) {
+    return this._filterOnIndex(childStore, parentStore, parentRecord.id)
+    return this._filterOnIndex(childStore, this.schema.getFkName(parentStore), parentRecord.id)
     return this._dbp.then(db => new Promise((resolve, reject) => {
       let records = []
       let transaction = db.transaction(childStore)
@@ -208,7 +229,26 @@ export class Database {
         if (cursor) {
           let record = cursor.value
           records.push(record)
-          cursor.continue();
+          cursor.continue()
+        }
+        else {
+          resolve(records)
+        }
+      }
+    }))
+  }
+  getLinked(storeName, indexName, record) {
+    return this._dbp.then(db => new Promise((resolve, reject) => {
+      let records = []
+      let transaction = db.transaction(storeName)
+      let index = transaction.objectStore(storeName).index(indexName)
+      let range = IDBKeyRange.only(record.id)
+      index.openCursor(range).onsuccess = event => {
+        let cursor = event.target.result
+        if (cursor) {
+          let record = cursor.value
+          records.push(record)
+          cursor.continue()
         }
         else {
           resolve(records)
@@ -223,7 +263,7 @@ export class Database {
   }
   link(store1, store2, store1Record, store2Record) {
     let storeName = this.schema.getLinkStoreName(store1, store2);
-    let record = {}
+    let record = {};
     record[this.schema.getFkName(store1)] = store1Record.id;
     record[this.schema.getFkName(store2)] = store2Record.id;
     return this.put(storeName, record)
@@ -307,6 +347,7 @@ class SchemaFunctionBuilder {
     }
   }
   manyToMany(store1, store2) {
+    let db =  this.target;
     let storeName = this.schema.getLinkStoreName(store1, store2);
     let store1Caps = this.capitalize(store1);
     let store2Caps = this.capitalize(store2);
@@ -319,16 +360,16 @@ class SchemaFunctionBuilder {
     this.target['get' + store2Caps + pluralStore1] = function(store2Record) {
       //return this.getLinked(storeName, store1, store2Record)
     }
-    this.target['link' + store1Caps + 'to' + store2Caps] = function(store1Record, store2Record) {
-      db.link(store1, store2, store1Record, store2Record)
+    this.target['link' + store1Caps + store2Caps] = function(store1Record, store2Record) {
+      return this.link(store1, store2, store1Record, store2Record)
     }
-    this.target['link' + store2Caps + 'to' + store1Caps] = function(store2Record, store1Record) {
-      db.link(store1, store2, store1Record, store2Record)
+    this.target['link' + store2Caps + store1Caps] = function(store2Record, store1Record) {
+      return this.link(store1, store2, store1Record, store2Record)
     }
-    this.target['unlink' + store1Caps + 'From' + store2Caps] = function(store1Record, store2Record) {
+    this.target['unlink' + store1Caps + store2Caps] = function(store1Record, store2Record) {
       //db.link(store1, store2, store1Record, store2Record)
     }
-    this.target['unlink' + store2Caps + 'From' + store1Caps] = function(store2Record, store1Record) {
+    this.target['unlink' + store2Caps + store1Caps] = function(store2Record, store1Record) {
       //db.link(store1, store2, store1Record, store2Record)
     }
   }
@@ -348,6 +389,9 @@ class SchemaUpgrader {
     return store
   }
   oneToMany(parent, child) {
+    c.log(parent)
+    c.log(child)
+    c.log(this.schema.getFkName(parent))
     this.stores[child].createIndex(parent, this.schema.getFkName(parent));
   }
   manyToMany(store1, store2) {

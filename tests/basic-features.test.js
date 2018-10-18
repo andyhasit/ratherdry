@@ -13,6 +13,14 @@ const schema = new Schema();
 schema.addVersion((schema, isUpgrade) => {
   let days = schema.addStore('day')
   let tasks = schema.addStore('task')
+  /*
+  schema.addStore('entry', {
+    types: {
+      day: DayEntry,
+      month: MonthEntry,
+    }
+  })
+  */
   let tags = schema.addStore('tag')
   schema.oneToMany('day', 'task')
   schema.manyToMany('tag', 'task')
@@ -49,10 +57,10 @@ it('All expected functions are defined', () => {
 
   expect(db.getTagTasks).toBeDefined()
   expect(db.getTaskTags).toBeDefined()
-  expect(db.linkTagtoTask).toBeDefined()
-  expect(db.linkTasktoTag).toBeDefined()
-  expect(db.unlinkTagFromTask).toBeDefined()
-  expect(db.unlinkTaskFromTag).toBeDefined()
+  expect(db.linkTagTask).toBeDefined()
+  expect(db.linkTaskTag).toBeDefined()
+  expect(db.unlinkTagTask).toBeDefined()
+  expect(db.unlinkTaskTag).toBeDefined()
 })
 
 it('clear works as expected', () => {
@@ -130,8 +138,22 @@ it('getChildren works as expected', () => {
   })
 })
 
-
 /*
+it('getManyToMany works as expected', () => { 
+  expect.assertions(1)
+  return db.putTask({text: 'misc'}).then(miscTask => {
+    return db.putTask({text: 'build tests'}).then(task => {
+      return db.putTag({text: 'urgent'}).then(tag => {
+        return db.linkTagTask(tag, task).then(() => {
+          return db.getTagTasks(tag).then(tasks => {
+            expect(tasks).toEqual([task])
+          })
+        })
+      })
+    })
+  })
+})
+
 filter with function works as expected
 getParent works as expected
 setParent works as expected
