@@ -108,3 +108,13 @@ var db = new Database('your-db-name', schema)
 At present only records are cached, meaning once a specific record has been fetched from the database, ratherdry will returned the cached version.
 
 The plan is to ensure all queries return cached records.
+
+### Tests
+
+Run with `npm test`.
+
+### Progress
+
+Stuck on implementing many to many, will use cursor's next feature to do a filter. Considering removing caching altogether.
+
+https://hacks.mozilla.org/2014/06/breaking-the-borders-of-indexeddb/
